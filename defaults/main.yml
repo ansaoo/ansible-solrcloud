@@ -30,7 +30,8 @@ solr_xms: "512M"
 solr_xmx: "512M"
 config_memory: false
 
-solr_cores: []
+solr_cores:
+  - test_collection
 
 # Enable restart solr handler
 solr_restart_handler_enabled: true

@@ -43,9 +43,13 @@
 - include_tasks: configure.yml
   when: "solr_version.split('.')[0] >= '5'"
 
+# Configure solr memory.
+- include_tasks: configure-mem.yml
+  when: "config_memory and solr_version.split('.')[0] >= '5'"
+
 # Create cores, if any are configured.
 - include_tasks: cores.yml
-  when: "config_memory and solr_cores and solr_version.split('.')[0] >= '5'"
+  when: "solr_cores and solr_version.split('.')[0] >= '5'"
 
 - include_tasks: trim-fat.yml
 
