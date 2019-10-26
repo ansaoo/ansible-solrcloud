@@ -7,6 +7,17 @@
       - sudo
     state: present
 
+- name: install dependencies
+  apt:
+    name: "{{ packages }}"
+    state: latest
+    update_cache: yes
+  vars:
+    packages:
+      - wget
+      - openjdk-8-jdk
+      - apt-transport-https
+
 - name: Run Solr installation script.
   command: >
     {{ solr_workspace }}/{{ solr_filename }}/bin/install_solr_service.sh
