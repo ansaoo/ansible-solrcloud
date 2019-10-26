@@ -1,0 +1,25 @@
+---
+- name: Ensure dependencies are installed.
+  package:
+    name:
+      - lsof
+      - acl
+      - sudo
+    state: present
+
+- name: Run Solr installation script.
+  command: >
+    {{ solr_workspace }}/{{ solr_filename }}/bin/install_solr_service.sh
+    {{ solr_workspace }}/{{ solr_filename }}.tgz
+    -i {{ solr_install_dir }}
+    -d {{ solr_home }}
+    -u {{ solr_user }}
+    -s {{ solr_service_name }}
+    -p {{ solr_port }}
+    -n
+  register: solr_install_script_result
+
+- name: Run systemd daemon_reload
+  systemd:
+    name: solr
+    daemon_reload: true

@@ -1,0 +1,47 @@
+---
+- name: Ensure configuration directory exist
+  file:
+    group: "{{ solr_user }}"
+    owner: "{{ solr_user }}"
+    path: "{{ item }}"
+    state: directory
+    with_items:
+      - "{{ solr_home }}"
+      - "{{ solr_pid_dir }}"
+      - "{{ solr_log_dir }}"
+
+- name: Create Zookeeper log4j config
+  template:
+    group: "{{ solr_user }}"
+    owner: "{{ solr_user }}"
+    dest: "{{ solr_log_props }}"
+    mode: 0644
+    src: log4j.properties.j2
+  notify: restart solr
+
+- name: Apply Solr configuration changes.
+  lineinfile:
+    dest: "{{ solr_config_file }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  with_items:
+    - regexp: "^.?ZK_HOST="
+      line: 'ZK_HOST="{{ zookeeper_cluster }}"'
+    - regexp: "^.?ZK_CLIENT_TIMEOUT="
+      line: 'ZK_CLIENT_TIMEOUT="{{ zookeeper_timeout }}"'
+    - regexp: "^.?SOLR_HOST="
+      line: 'SOLR_HOST="{{ solr_host }}"'
+    - regexp: "^.?SOLR_PID_DIR="
+      line: 'SOLR_PID_DIR="{{ solr_pid_dir }}"'
+    - regexp: "^.?SOLR_HOME="
+      line: 'SOLR_HOME="{{ solr_home }}"'
+    - regexp: "^.?LOG4J_PROPS="
+      line: 'LOG4J_PROPS="{{ solr_log_props }}"'
+    - regexp: "^.?SOLR_LOGS_DIR="
+      line: 'SOLR_LOGS_DIR="{{ solr_log_dir }}"'
+    - regexp: "^SOLR_PORT="
+      line: 'SOLR_PORT="{{ solr_port }}"'
+    - regexp: "^.?SOLR_TIMEZONE="
+      line: 'SOLR_TIMEZONE="{{ solr_timezone }}"'
+  notify: restart solr
