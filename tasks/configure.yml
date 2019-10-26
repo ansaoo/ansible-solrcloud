@@ -5,10 +5,10 @@
     owner: "{{ solr_user }}"
     path: "{{ item }}"
     state: directory
-    with_items:
-      - "{{ solr_home }}"
-      - "{{ solr_pid_dir }}"
-      - "{{ solr_log_dir }}"
+  with_items:
+    - "{{ solr_home }}"
+    - "{{ solr_pid_dir }}"
+    - "{{ solr_log_dir }}"
 
 - name: Create Zookeeper log4j config
   template:
