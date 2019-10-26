@@ -16,7 +16,7 @@
     owner: "{{ solr_user }}"
     dest: "{{ solr_log_props }}"
     mode: 0644
-    src: log4j.properties.j2
+    src: log4j2.xml.j2
   notify: restart solr
 
 - name: Apply Solr configuration changes.
