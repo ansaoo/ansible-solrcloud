@@ -1,5 +1,5 @@
 ---
-- name: Ensure dependencies are installed.
+- name: SolrCloud | Ensure dependencies are installed.
   package:
     name:
       - lsof
@@ -7,7 +7,7 @@
       - sudo
     state: present
 
-- name: install dependencies
+- name: SolrCloud | Install requirements
   apt:
     name: "{{ packages }}"
     state: latest
@@ -15,12 +15,74 @@
   vars:
     packages:
       - wget
+      - rsync
       - openjdk-8-jdk
       - apt-transport-https
 
-- name: Run Solr installation script.
+- name: SolrCloud | Ensure solr_user group exists.
+  group:
+    name: "{{ solr_user }}"
+    state: present
+
+- name: SolrCloud | Ensure solr_user exists.
+  user:
+    name: "{{ solr_user }}"
+    state: present
+    group: "{{ solr_user }}"
+    shell: /bin/bash
+
+- name: SolrCloud | Set solr_filename.
+  set_fact:
+    solr_filename: "solr-{{ solr_version }}"
+  when: "solr_version.split('.')[0] >= '4'"
+
+- name: SolrCloud | Check if Solr has been installed already.
+  stat:
+    path: "{{ solr_install_path }}"
+  register: solr_install_path_status
+
+- name: SolrCloud | Check if service is running
+  command: "systemctl status {{ solr_service_name }}.service"
+  ignore_errors: true
+  changed_when: false
+  register: service_solrcloud_status
+  tags:
+    - skip_ansible_lint
+
+- name: SolrCloud | Check installed version
+  uri:
+    url: "http://localhost:{{ solr_port }}/solr/admin/info/system?wt=xml"
+    return_content: true
+  register: solrcloud_check
+  changed_when: false
+  ignore_errors: true
+  when: service_solrcloud_status is success
+
+- name: SolrCloud | Download SolrCloud binaries
+  get_url:
+    url: "{{ solr_mirror }}/lucene/solr/{{ solr_version }}/{{ solr_filename }}.tgz"
+    dest: "{{ solr_workspace }}/{{ solr_filename }}.tgz"
+  when: |
+    service_solrcloud_status.rc > 0 or
+    service_solrcloud_status is success and
+      (solrcloud_check is failed or
+      "<str name=\"lucene-spec-version\">{{ solr_version }}</str>" not in solrcloud_check.content)
+
+- name: SolrCloud | Extract SolrCloud installation script in the current directory
+  shell: "tar xzf {{ solr_workspace }}/{{ solr_filename }}.tgz {{ solr_filename }}/bin/install_solr_service.sh --strip-components=2"
+  args:
+    chdir: "{{ solr_workspace }}"
+  when: |
+    service_solrcloud_status.rc > 0 or
+    service_solrcloud_status is success and
+      (solrcloud_check is failed or
+      "<str name=\"lucene-spec-version\">{{ solr_version }}</str>" not in solrcloud_check.content)
+  tags:
+    - skip_ansible_lint
+
+- name: SolrCloud | Run Solr installation script.
   command: >
-    {{ solr_workspace }}/{{ solr_filename }}/bin/install_solr_service.sh
+    {{ solr_workspace }}/install_solr_service.sh
     {{ solr_workspace }}/{{ solr_filename }}.tgz
     -i {{ solr_install_dir }}
     -d {{ solr_home }}
@@ -28,9 +90,16 @@
     -s {{ solr_service_name }}
     -p {{ solr_port }}
     -n
+  when: |
+      service_solrcloud_status.rc > 0 or
+      service_solrcloud_status is success and
+        (solrcloud_check is failed or
+        "<str name=\"lucene-spec-version\">{{ solr_version }}</str>" not in solrcloud_check.content)
   register: solr_install_script_result
+  tags:
+    - skip_ansible_lint
 
-- name: Run systemd daemon_reload
+- name: SolrCloud | Run systemd daemon_reload
   systemd:
     name: solr
     daemon_reload: true

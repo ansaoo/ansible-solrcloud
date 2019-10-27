@@ -1,6 +1,8 @@
 # Ansible Role: Apache SolrCloud
 
-Inspired by [geerlingguy](https://github.com/geerlingguy) / [ansible-role-solr](https://github.com/geerlingguy/ansible-role-solr).
+## Ref
+*  [idealista](https://github.com/idealista)/[solrcloud-role](https://github.com/idealista/solrcloud-role)
+*  [geerlingguy](https://github.com/geerlingguy)/[ansible-role-solr](https://github.com/geerlingguy/ansible-role-solr).
 
 
 ## Requirement

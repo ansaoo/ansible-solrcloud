@@ -1,5 +1,30 @@
 ---
-- name: Ensure configuration directory exist
+
+- name: SolrCloud | Give execution permission to zkcli script
+  file:
+    path: "{{ solr_zookeeper_client_path }}/zkcli.sh"
+    mode: 0744
+
+- name: SolrCloud | Check Root Path (znode) in ZooKeeper
+  command: >
+    {{ solr_zookeeper_client_path }}/zkcli.sh
+    -zkhost {{ zookeeper_cluster }}
+    -cmd list /{{ solr_zookeeper_chroot }}
+  register: solr_path_check
+  changed_when: false
+
+- name: SolrCloud | Create Root Path (znode) in ZooKeeper using zkcli script
+  command: >
+    {{ solr_zookeeper_client_path }}/zkcli.sh
+    -zkhost {{ zookeeper_cluster }}
+    -cmd makepath /{{ solr_zookeeper_chroot }}
+  when: '" /{{ solr_zookeeper_chroot }} " not in solr_path_check.stdout'
+  register: create_root_path_result
+  failed_when: |
+    create_root_path_result.rc != 0 and
+    "NodeExists" not in create_root_path_result.stderr
+
+- name: SolrCloud | Ensure configuration directory exist
   file:
     group: "{{ solr_user }}"
     owner: "{{ solr_user }}"
@@ -10,16 +35,31 @@
     - "{{ solr_pid_dir }}"
     - "{{ solr_log_dir }}"
 
-- name: Create Zookeeper log4j config
+- name: SolrCloud | Configuring SolrCloud properties
   template:
     group: "{{ solr_user }}"
     owner: "{{ solr_user }}"
-    dest: "{{ solr_log_props }}"
-    mode: 0644
-    src: log4j2.xml.j2
+    src: solr.xml.j2
+    dest: "{{ solr_data_dir }}/solr.xml"
+    force: true
   notify: restart solr
 
-- name: Apply Solr configuration changes.
+- name: SolrCloud | Upload SolrCloud properties in ZooKeeper using zkcli script
+  command: >
+    {{ solr_zookeeper_client_path }}/zkcli.sh
+    -zkhost {{ solr_zk_host }}
+    -cmd putfile /solr.xml {{ solr_data_dir }}/solr.xml
+
+- name: SolrCloud | Configuring log properties
+  template:
+    group: "{{ solr_user }}"
+    owner: "{{ solr_user }}"
+    dest: "{{ solr_home }}/{{ solr_log_config_file }}"
+    mode: 0644
+    src: "{{ solr_log_config_file }}.j2"
+  notify: restart solr
+
+- name: SolrCloud | Apply Solr configuration changes.
   lineinfile:
     dest: "{{ solr_config_file }}"
     regexp: "{{ item.regexp }}"
@@ -44,4 +84,24 @@
       line: 'SOLR_PORT="{{ solr_port }}"'
     - regexp: "^.?SOLR_TIMEZONE="
       line: 'SOLR_TIMEZONE="{{ solr_timezone }}"'
+  notify: restart solr
+
+- name: SolrCloud | Remove existing SOLR_HEAP configuration.
+  lineinfile:
+    dest: "{{ solr_config_file }}"
+    regexp: "^SOLR_HEAP"
+    state: absent
+  when: solr_config_memory
+  notify: restart solr
+
+- name: SolrCloud | Apply Solr JVM configuration changes.
+  lineinfile:
+    dest: "{{ solr_config_file }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  with_items:
+    - regexp: "^.?SOLR_JAVA_MEM="
+      line: 'SOLR_JAVA_MEM="-Xms{{ solr_xms }} -Xmx{{ solr_xmx }}"'
+  when: solr_config_memory
   notify: restart solr

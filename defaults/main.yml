@@ -1,42 +1,63 @@
 ---
+
 solr_workspace: /tmp
 
-solr_create_user: true
-solr_user: solr
-
+# General
 solr_version: "7.6.0"
 solr_mirror: "https://archive.apache.org/dist"
 solr_remove_cruft: false
 
-solr_service_manage: true
+# Owner
+solr_create_user: true
+solr_user: solr
+
+# Start and boot
+solr_service_enabled: true
 solr_service_name: solr
 solr_service_state: started
 
+# Files and paths
 solr_install_dir: /opt
 solr_install_path: "/opt/{{ solr_service_name }}"
 solr_home: "/var/{{ solr_service_name }}"
+solr_pid_dir: "{{ solr_home }}"
+solr_data_dir: "{{ solr_home }}/data"
+solr_log_dir: "{{ solr_home }}/logs"
+
+# Port
 solr_connect_host: localhost
 solr_port: "8983"
 solr_host: "localhost"
-solr_pid_dir: "/var/{{ solr_service_name }}"
-solr_log_props: "/var/{{ solr_service_name }}/log4j2.xml.j2"
-solr_log_dir: "/var/{{ solr_service_name }}/logs"
 
+# Log
+solr_log_root_level: info
+solr_log_file_size: 32MB
+solr_log_max_backup_index: 10
+solr_log_config_file: log4j2.xml
+solr_log_file_name: solr.log
+solr_log_slow_queries_file_name: solr_slow_requests.log
+
+# Config
 solr_config_file: /etc/default/{{ solr_service_name }}.in.sh
-# config
 solr_timezone: "UTC"
-# memory
+
+# JVM
+solr_config_memory: false
 solr_xms: "512M"
 solr_xmx: "512M"
-config_memory: false
 
-solr_cores:
-  - test_collection
+# Collections
+solr_cores: []
 
 # Enable restart solr handler
 solr_restart_handler_enabled: true
 
-# comma-separated list with optional chroot
-zookeeper_cluster: "localhost:2181/solr"
-zookeeper_timeout: 15000
+# Zookeeper
+# comma-separated list
+zookeeper_cluster: "localhost:2181"
+# chroot
+solr_zookeeper_chroot: solrtest
+solr_zk_host: "{{ zookeeper_cluster }}/{{ solr_zookeeper_chroot }}"
+solr_zookeeper_client_path: "{{ solr_install_path }}/server/scripts/cloud-scripts"
+solr_zookeeper_timeout: 15000
 

@@ -1,60 +1,35 @@
 ---
-- import_tasks: user.yml
-  when: solr_create_user
 
-- name: Set solr_filename for Solr 4+.
-  set_fact:
-    solr_filename: "solr-{{ solr_version }}"
-  when: "solr_version.split('.')[0] >= '4'"
-
-- name: Check if Solr has been installed already.
-  stat:
-    path: "{{ solr_install_path }}"
-  register: solr_install_path_status
-
-- name: Download Solr.
-  get_url:
-    url: "{{ solr_mirror }}/lucene/solr/{{ solr_version }}/{{ solr_filename }}.tgz"
-    dest: "{{ solr_workspace }}/{{ solr_filename }}.tgz"
-    force: false
-  when: solr_install_path_status.stat.isdir is not defined
-  register: solr_download_status
-
-- name: Expand Solr.
-  unarchive:
-    src: "{{ solr_workspace }}/{{ solr_filename }}.tgz"
-    dest: "{{ solr_workspace }}"
-    copy: false
-  when: solr_download_status.changed
-  tags: ['skip_ansible_lint']
-
-# Install Solr 5+.
-- include_tasks: install.yml
+# Install Solr .
+- name: SolrCloud | Install
+  include_tasks: install.yml
   when: "solr_version.split('.')[0] >= '5'"
-
-- name: Ensure solr is enabled but NOT started on boot if configured.
-  service:
-    name: "{{ solr_service_name }}"
-    state: stopped
-    enabled: true
-  when: solr_service_manage
 
 # Configure solr.
-- include_tasks: configure.yml
+- name: SolrCloud | Config
+  include_tasks: configure.yml
   when: "solr_version.split('.')[0] >= '5'"
-
-# Configure solr memory.
-- include_tasks: configure-mem.yml
-  when: "config_memory and solr_version.split('.')[0] >= '5'"
 
 # Create cores, if any are configured.
 - include_tasks: cores.yml
   when: "solr_cores and solr_version.split('.')[0] >= '5'"
 
-- include_tasks: trim-fat.yml
+- name: SolrCloud | Remove unused example
+  include_tasks: trim-fat.yml
+  when: solr_remove_cruft
 
-- name: Start solr
+- name: SolrCloud | Start solr
   service:
     name: "{{ solr_service_name }}"
     state: "{{ solr_service_state }}"
-  when: solr_service_manage
+    sleep: 5
+
+- name: SolrCloud | Wait to fully startup before continue
+  uri:
+    url: "http://{{ solr_host }}:{{ solr_port }}/solr"
+    status_code: 200
+  retries: "100"
+  delay: "1"
+  register: result
+  until: result.status == 200
+  changed_when: false
