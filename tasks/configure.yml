@@ -45,11 +45,20 @@
     force: true
   notify: restart solr
 
+- name: SolrCloud | Check SolrCloud properties in ZooKeeper
+  command: >
+    {{ solr_zookeeper_client_path }}/zkcli.sh
+    -zkhost {{ solr_zk_host }}
+    -cmd list /solr.xml
+  register: solr_xml_check
+  changed_when: false
+
 - name: SolrCloud | Upload SolrCloud properties in ZooKeeper using zkcli script
   command: >
     {{ solr_zookeeper_client_path }}/zkcli.sh
     -zkhost {{ solr_zk_host }}
     -cmd putfile /solr.xml {{ solr_data_dir }}/solr.xml
+  when: '" /solr.xml " not in solr_xml_check.stdout'
 
 - name: SolrCloud | Configuring log properties
   template:
@@ -68,9 +77,9 @@
     state: present
   with_items:
     - regexp: "^.?ZK_HOST="
-      line: 'ZK_HOST="{{ zookeeper_cluster }}"'
+      line: 'ZK_HOST="{{ solr_zk_host }}"'
     - regexp: "^.?ZK_CLIENT_TIMEOUT="
-      line: 'ZK_CLIENT_TIMEOUT="{{ zookeeper_timeout }}"'
+      line: 'ZK_CLIENT_TIMEOUT="{{ solr_zookeeper_timeout }}"'
     - regexp: "^.?SOLR_HOST="
       line: 'SOLR_HOST="{{ solr_host }}"'
     - regexp: "^.?SOLR_PID_DIR="
@@ -78,7 +87,7 @@
     - regexp: "^.?SOLR_HOME="
       line: 'SOLR_HOME="{{ solr_home }}"'
     - regexp: "^.?LOG4J_PROPS="
-      line: 'LOG4J_PROPS="{{ solr_log_props }}"'
+      line: 'LOG4J_PROPS="{{ solr_home }}/{{ solr_log_config_file }}"'
     - regexp: "^.?SOLR_LOGS_DIR="
       line: 'SOLR_LOGS_DIR="{{ solr_log_dir }}"'
     - regexp: "^SOLR_PORT="
