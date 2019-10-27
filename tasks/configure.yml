@@ -32,6 +32,7 @@
     state: directory
   with_items:
     - "{{ solr_home }}"
+    - "{{ solr_data_dir }}"
     - "{{ solr_pid_dir }}"
     - "{{ solr_log_dir }}"
 
