@@ -91,11 +91,11 @@
     -p {{ solr_port }}
     -n
   when: |
-      service_solrcloud_status.rc > 0 or
+      solr_install_path_status.stat.isdir is not defined and
+      (service_solrcloud_status.rc > 0 or
       service_solrcloud_status is success and
         (solrcloud_check is failed or
-        "<str name=\"lucene-spec-version\">{{ solr_version }}</str>" not in solrcloud_check.content) or
-      solr_install_path_status.stat.isdir is not defined
+        "<str name=\"lucene-spec-version\">{{ solr_version }}</str>" not in solrcloud_check.content))
   register: solr_install_script_result
   tags:
     - skip_ansible_lint
